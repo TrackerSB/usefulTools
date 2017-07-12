@@ -1,0 +1,70 @@
+#!/bin/bash
+
+pullAll_pulled=( [0]=Pulled )
+pullAll_notPulled=( [0]="Not pulled" )
+pullAll_skipped=( [0]=Skipped )
+
+function checkDirectories {
+    cd $1 2>/dev/null #FIXME Why is it failing sometimes?
+
+    BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --always 2>/dev/null)
+    if [ -n "$BRANCH" ]; then
+        if [ $(git rev-list @{u}..HEAD | wc -l) -gt 0 ];  then
+            pullRepo
+        else
+            pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
+        fi
+    else
+        for entry in $(find "$1" -maxdepth 1 -type d 2>/dev/null); do #TODO Why is it failing sometimes?
+            if [[ "$1" != "$entry" ]]; then
+                checkDirectories "$entry"
+            fi
+        done
+    fi
+}
+
+function pullRepo {
+    echo
+    echo "Git repo: $(pwd)"
+    echo "Branch: $BRANCH"
+    read -p "Do you want to pull? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        pullAll_pulled[${#pullAll_pulled[@]}]="$(pwd)"
+        git pull --rebase
+    else
+        pullAll_notPulled[${#pullAll_notPulled[@]}]="$(pwd)"
+    fi
+}
+
+function setup {
+    local pullAllRootPath
+    if [[ "$1" != */$ ]]; then
+        pullAllRootPath="$1/"
+    else
+        pullAllRootPath="$1"
+    fi
+    checkDirectories $pullAllRootPath
+}
+
+echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository and show some statistics on the end. NOTE: Subtrees are also pulled \"on-demand\"."
+if [[ $# -lt 1 ]]; then
+    (>&2 echo "You have to specify the root directory to search from.") #Using subshell (round braces) to avoid conflicts with other redirects.
+else
+    setup $(cd $1; pwd) #Get absolute path
+
+    lengths=( ${#pullAll_pulled[@]} ${#pullAll_notPulled[@]} ${#pullAll_skipped[@]} )
+    IFS=$'\n' sorted=($(sort -rn <<<"${lengths[*]}"))
+    unset IFS
+    longestLength=${sorted[0]}
+
+    index=0
+    while [ $index -le $longestLength ]; do
+        echo -e "${pullAll_pulled[$index]} #${pullAll_notPulled[$index]} #${pullAll_skipped[$index]} "
+        ((index++))
+    done | column -t -s'#'
+fi
+
+unset checkDirectories
+unset pullRepo
+unset setup
