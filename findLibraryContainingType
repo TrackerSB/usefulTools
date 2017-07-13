@@ -4,25 +4,21 @@
 #Example findLibraryContainingType myBinary some_function
 
 if [ $# -lt 2 ]; then
-    (>&2 echo "You need to provide two parameters: \$1=binaryname, \$2=typename")
+    (>&2 echo "You need to provide two parameters: \$1=searchdir, \$2=typename")
     exit
 fi
 
-lddOutpout=$(ldd -r "$1")
-
-while read line; do
-    IFS=' ' read -ra PARTS <<< "$line"
-    if [[ "$line" == *"=>"* ]]; then
-        libPath="${PARTS[2]}"
-    else
-        libPath="${PARTS[0]}"
-    fi
-    foundLines=$(nm "$libPath" 2>/dev/null | grep "$2")
-
-    if [ -n "$foundLines" ]; then
+function process () {
+    foundLines=$(nm "$1" 2>/dev/null | grep "$2")
+    if [ -n "$foundLines" ];then
         echo
-        echo "$libPath"
+        echo "$1"
         echo "$foundLines"
     fi
+}
 
-done <<< "$lddOutpout"
+find "$1" -name '*.so' | while read lib;do
+    process $lib $2
+done
+
+unset process
