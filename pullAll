@@ -4,14 +4,25 @@ pullAll_pulled=( [0]=Pulled )
 pullAll_notPulled=( [0]="Not pulled" )
 pullAll_skipped=( [0]=Skipped )
 
+#$1=directory to check
 function checkDirectories {
     cd $1 2>/dev/null #FIXME Why is it failing sometimes?
 
     BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --always 2>/dev/null)
     if [ -n "$BRANCH" ]; then
-        if [ $(git rev-list @{u}..HEAD | wc -l) -gt 0 ];  then
+        echo
+        echo "Repo: $1"
+        git remote update >/dev/null
+        read -ra updowncount <<< "$(git rev-list --count --left-right @{u}...HEAD)"
+        downcount=${updowncount[0]}
+        upcount=${updowncount[1]}
+        if [ $upcount -gt 0 ];then
+            (>&2 echo "Can't pull. There are $upcount commits to push.")
+            pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
+        elif [ $downcount -gt 0 ];then
             pullRepo
         else
+            echo "Repo is up-to-date"
             pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
         fi
     else
@@ -24,19 +35,20 @@ function checkDirectories {
 }
 
 function pullRepo {
-    echo
-    echo "Git repo: $(pwd)"
     echo "Branch: $BRANCH"
-    read -p "Do you want to pull? " -n 1 -r
+    read -p "Do you want to pull? ([Yy] for yes) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         pullAll_pulled[${#pullAll_pulled[@]}]="$(pwd)"
         git pull --rebase
+        echo "Pulled"
     else
         pullAll_notPulled[${#pullAll_notPulled[@]}]="$(pwd)"
+        echo "Not pulled"
     fi
 }
 
+#$1=rootdir
 function setup {
     local pullAllRootPath
     if [[ "$1" != */$ ]]; then
@@ -47,7 +59,7 @@ function setup {
     checkDirectories $pullAllRootPath
 }
 
-echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository and show some statistics on the end. NOTE: Subtrees are also pulled \"on-demand\"."
+echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository and show some statistics at the end. NOTE: Subtrees are not pulled."
 if [[ $# -lt 1 ]]; then
     (>&2 echo "You have to specify the root directory to search from.") #Using subshell (round braces) to avoid conflicts with other redirects.
 else
@@ -58,6 +70,7 @@ else
     unset IFS
     longestLength=${sorted[0]}
 
+    echo
     index=0
     while [ $index -le $longestLength ]; do
         echo -e "${pullAll_pulled[$index]} #${pullAll_notPulled[$index]} #${pullAll_skipped[$index]} "
