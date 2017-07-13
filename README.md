@@ -3,7 +3,7 @@ Contains some small (but sometimes really useful) scripts for daily work on prog
 
 |filename|usage|
 |---|---|
-|echoGitRootDir|prints the path of the root of the git repo currently in|
+|echoGitRootDir|prints the path of the root directory of the git repo currently in|
 |findBinariesLibraryOfType|Lists all shared libraries linked to the given binary containing a certain string in any type|
 |findLibraryContainingType|Lists all shared libraries recursively in the given directory containing a given string in any type|
 |generalUpdate|Executes a complete update and upgrade of the system, removes unneeded packages and cleans (This one is really primitive, but "the small things matter in life")
