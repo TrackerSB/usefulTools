@@ -1,7 +1,8 @@
 #!/bin/bash
 
-#This script returns the linked libraries of $1 which contain a certain type with name $2
-#Example findLibraryContainingType myBinary some_function
+#This script returns all libraries in $1 which contain a certain type with name
+#$2
+#Example findLibraryContainingType rootdir some_function
 
 if [ $# -lt 2 ]; then
     (>&2 echo "You need to provide two parameters: \$1=searchdir, \$2=typename")

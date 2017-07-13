@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#This script returns the linked libraries of $1 which contain a certain type with name $2
+#This script returns the linked libraries of $1 which contain a certain type
+#with name $2
 #Example findLibraryContainingType myBinary some_function
 
 if [ $# -lt 2 ]; then
