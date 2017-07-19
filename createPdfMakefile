@@ -1,0 +1,29 @@
+if [ "$#" -lt 2 ]; then
+    echo "You need to specify tex filename (without .tex). Second parameter: \"true\" if you want to use biber and references.bib"
+else
+    echo "FILENAME=$1" > Makefile
+    if [ "$2" == "true" ]; then
+        echo "\$(FILENAME).pdf: \$(FILENAME).tex references.bib
+	pdflatex \$(FILENAME).tex
+	biber \$(FILENAME).bcf
+	pdflatex \$(FILENAME).tex
+	pdflatex \$(FILENAME).tex" >> Makefile
+    else
+        echo "\$(FILENAME).pdf: \$(FILENAME).tex
+	pdflatex \$(FILENAME).tex
+	pdflatex \$(FILENAME).tex" >> Makefile
+    fi
+    echo "
+
+.PHONY: clean
+clean:
+	rm *.toc *.aux *.out *.nav *.log *.snm *.pdf *.bbl *.blg *.bcf *.run.xml
+
+.PHONY: show
+show: \$(FILENAME).pdf
+	okular \$(FILENAME).pdf
+
+.PHONY: present
+present: \$(FILENAME).pdf
+	pdfpc \$(FILENAME).pdf" >> Makefile
+fi
