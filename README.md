@@ -3,6 +3,7 @@ Contains some small (but sometimes really useful) scripts for daily work on prog
 
 |filename|usage|
 |---|---|
+|amIInVirtualenv.py|prints whether the current execution is within a virtualenv (Works with python2 and python3|
 |createPdfMakefile|creates a make file for compiling latex files with biber|
 |echoGitRootDir|prints the path of the root directory of the git repo currently in|
 |findBinariesLibraryOfType|Lists all shared libraries linked to the given binary containing a certain string in any type|
