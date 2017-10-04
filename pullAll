@@ -4,33 +4,42 @@ pullAll_pulled=( [0]=Pulled )
 pullAll_notPulled=( [0]="Not pulled" )
 pullAll_skipped=( [0]=Skipped )
 
-#$1=directory to check
+#$1=<directory to check>, $2=<array of folders to ignore>
 function checkDirectories {
     cd $1 2>/dev/null #FIXME Why is it failing sometimes?
 
-    BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --always 2>/dev/null)
-    if [ -n "$BRANCH" ]; then
-        echo
-        echo "Repo: $1"
-        git remote update >/dev/null
-        read -ra updowncount <<< "$(git rev-list --count --left-right @{u}...HEAD)"
-        downcount=${updowncount[0]}
-        upcount=${updowncount[1]}
-        if [ $upcount -gt 0 ];then
-            (>&2 echo "Can't pull. There are $upcount commits to push.")
-            pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
-        elif [ $downcount -gt 0 ];then
-            pullRepo
+    local ignoreFolder=false
+    for ignored in $2; do
+        ignoreFolder=$ignoreFolder || [ "${2:0:${#ignored}}" == "$ignored" ]
+    done
+
+    if [ !$ignoreFolder ]; then
+        BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --always 2>/dev/null)
+        if [ -n "$BRANCH" ]; then
+            echo
+            echo "Repo: $1"
+            git remote update >/dev/null
+            read -ra updowncount <<< "$(git rev-list --count --left-right @{u}...HEAD)"
+            downcount=${updowncount[0]}
+            upcount=${updowncount[1]}
+            if [ $upcount -gt 0 ];then
+                (>&2 echo "Can't pull. There are $upcount commits to push.")
+                pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
+            elif [ $downcount -gt 0 ];then
+                pullRepo
+            else
+                echo "Repo is up-to-date"
+                pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
+            fi
         else
-            echo "Repo is up-to-date"
-            pullAll_skipped[${#pullAll_skipped[@]}]="$(pwd)"
+            for entry in $(find "$1" -maxdepth 1 -type d 2>/dev/null); do #FIXME Why is it failing sometimes?
+                if [[ "$1" != "$entry" ]]; then
+                    checkDirectories "$entry"
+                fi
+            done
         fi
     else
-        for entry in $(find "$1" -maxdepth 1 -type d 2>/dev/null); do #TODO Why is it failing sometimes?
-            if [[ "$1" != "$entry" ]]; then
-                checkDirectories "$entry"
-            fi
-        done
+        echo "Ignoring folder $1"
     fi
 }
 
@@ -48,7 +57,7 @@ function pullRepo {
     fi
 }
 
-#$1=rootdir
+#$1=<rootdir>, $2=<array of folder to ignore>
 function setup {
     local pullAllRootPath
     if [[ "$1" != */$ ]]; then
@@ -56,14 +65,33 @@ function setup {
     else
         pullAllRootPath="$1"
     fi
-    checkDirectories $pullAllRootPath
+    checkDirectories $pullAllRootPath $2
 }
 
-echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository and show some statistics at the end. NOTE: Subtrees are not pulled."
+#$1=<single path or array of paths>
+function getAbsPath {
+    local absPaths=()
+    for path in $1; do
+        if [ -d $path ]; then
+            absPaths+=( $(cd $1; pwd) )
+        fi
+    done
+    echo ${absPaths[@]}
+}
+
+echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository ignore all further specified directories and show some statistics at the end.\nNOTE: Subtrees are not pulled."
 if [[ $# -lt 1 ]]; then
     (>&2 echo "You have to specify the root directory to search from.") #Using subshell (round braces) to avoid conflicts with other redirects.
 else
-    setup $(cd $1; pwd) #Get absolute path
+    rootDir=$1
+    excludedDirs=${@:2}
+    rootDirAbs=$(getAbsPath $rootDir)
+    excludedDirsAbs=()
+    for i in $excludedDirs; do
+        abs=$(getAbsPath $i)
+        excludedDirsAbs+=( $abs )
+    done
+    setup $(getAbsPath $rootDir) $(getAbsPath $excludedDirs)
 
     lengths=( ${#pullAll_pulled[@]} ${#pullAll_notPulled[@]} ${#pullAll_skipped[@]} )
     IFS=$'\n' sorted=($(sort -rn <<<"${lengths[*]}"))
