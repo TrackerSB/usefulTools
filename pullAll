@@ -3,17 +3,16 @@
 pullAll_pulled=( [0]=Pulled )
 pullAll_notPulled=( [0]="Not pulled" )
 pullAll_skipped=( [0]=Skipped )
+rootDirAbs=""
+excludedDirsAbs=()
 
-#$1=<directory to check>, $2=<array of folders to ignore>
+#$1=<directory to check>
 function checkDirectories {
     cd $1 2>/dev/null #FIXME Why is it failing sometimes?
 
     local ignoreFolder=false
-    for ignored in $2; do
-        ignoreFolder=$ignoreFolder || [ "${2:0:${#ignored}}" == "$ignored" ]
-    done
 
-    if [ !$ignoreFolder ]; then
+    if  ! $ignoreFolder; then
         BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --always 2>/dev/null)
         if [ -n "$BRANCH" ]; then
             echo
@@ -57,41 +56,38 @@ function pullRepo {
     fi
 }
 
-#$1=<rootdir>, $2=<array of folder to ignore>
 function setup {
     local pullAllRootPath
-    if [[ "$1" != */$ ]]; then
-        pullAllRootPath="$1/"
+    if [[ "$rootDirAbs" != */$ ]]; then
+        pullAllRootPath="$rootDirAbs/"
     else
-        pullAllRootPath="$1"
+        pullAllRootPath="$rootDirAbs"
     fi
-    checkDirectories $pullAllRootPath $2
+    checkDirectories $pullAllRootPath
 }
 
-#$1=<single path or array of paths>
+#$@=<paths to return an abs path>
 function getAbsPath {
     local absPaths=()
-    for path in $1; do
+    for path in $@; do
         if [ -d $path ]; then
-            absPaths+=( $(cd $1; pwd) )
+            absPaths+=( $(cd $path; pwd) )
         fi
     done
     echo ${absPaths[@]}
 }
 
-echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository ignore all further specified directories and show some statistics at the end.\nNOTE: Subtrees are not pulled."
+echo "This tool will pull AND rebase from all subdirectories of the given one containing a git repository ignore all further specified directories and show some statistics at the end."
+echo "NOTE: Subtrees are not pulled."
 if [[ $# -lt 1 ]]; then
     (>&2 echo "You have to specify the root directory to search from.") #Using subshell (round braces) to avoid conflicts with other redirects.
 else
-    rootDir=$1
-    excludedDirs=${@:2}
-    rootDirAbs=$(getAbsPath $rootDir)
-    excludedDirsAbs=()
-    for i in $excludedDirs; do
-        abs=$(getAbsPath $i)
-        excludedDirsAbs+=( $abs )
-    done
-    setup $(getAbsPath $rootDir) $(getAbsPath $excludedDirs)
+    rootDirAbs=$(getAbsPath $1)
+    all=$@
+    excludedDirs=( "${all[@]:2}" )
+    excludedDirsAbs=$(getAbsPath ${excludedDirs[@]})
+
+    setup
 
     lengths=( ${#pullAll_pulled[@]} ${#pullAll_notPulled[@]} ${#pullAll_skipped[@]} )
     IFS=$'\n' sorted=($(sort -rn <<<"${lengths[*]}"))
