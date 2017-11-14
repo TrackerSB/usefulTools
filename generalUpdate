@@ -8,4 +8,4 @@ sudo apt autoremove
 sudo apt autoclean
 
 #npm
-npm update
+sudo npm -g update
