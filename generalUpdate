@@ -9,3 +9,7 @@ sudo apt autoclean
 
 #npm
 sudo npm -g update
+
+#Pip
+sudo pip2 install --upgrade pip
+sudo pip3 install --upgrade pip
