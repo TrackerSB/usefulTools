@@ -13,4 +13,5 @@ Contains some small (but sometimes really useful) scripts for daily work on prog
 |gitadd|A command useful when commiting huge amounts of data or a huge number of files|
 |pullAll|Checks all git repos recursively whether they need to be updated and whether they can be. If so then the script asks you whether you want to update|
 |pullRebasePush|A single command for pulling, rebasing and pushing your local commits|
+|recordGource.sh|An complete example command for saving gource output as mp4 file|
 |renameFormats|Replaces all files having a given format with the other given format|
