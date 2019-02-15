@@ -29,7 +29,7 @@ PACKAGER = [
     Packager(
         "snap",
         ["snap", "refresh", "--list"],
-        lambda output: (-1, "<list of packages>"),
+        lambda output: (output.count("\n") - 1, "<list of packages>"),
         [
             ["snap", "refresh"]
         ]),
