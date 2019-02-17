@@ -11,42 +11,51 @@ from __future__ import print_function
 from collections import namedtuple
 
 
-Packager = namedtuple("Packager", "command update_command get_updateable \
-        upgrade_commands")
+Packager = namedtuple("Packager", "command update_commands upgrade_commands")
+
+
+def __get_updatable(packager, update_output):
+    if packager == "apt":
+        packagelist = update_output.splitlines()
+        del packagelist[0]
+    elif packager == "snap":
+        packagelist = []
+    elif packager in ("pip2", "pip3"):
+        packagelist = list(map(lambda line: line.partition(' ')[0],
+                               update_output.splitlines()))
+        del packagelist[0:2]
+    else:
+        print("The packager " + packager + " is not supported.")
+        packagelist = []
+    return packagelist
 
 
 PACKAGER = [
     Packager(
         "apt",
-        ["apt", "update"],
-        lambda output: (-1, "<list of packages>"),
         [
-            ["apt", "upgrade"],
-            ["apt", "dist-upgrade"],
-            ["apt", "autoremove"],
-            ["apt", "autoclean"]
+            ["sudo", "apt", "update"],
+            ["sudo", "apt", "list", "--upgradable"]
+        ], [
+            ["sudo", "apt", "upgrade"],
+            ["sudo", "apt", "dist-upgrade"],
+            ["sudo", "apt", "autoremove"],
+            ["sudo", "apt", "autoclean"]
         ]),
     Packager(
         "snap",
-        ["snap", "refresh", "--list"],
-        lambda output: (output.count("\n") - 1, "<list of packages>"),
-        [
-            ["snap", "refresh"]
-        ]),
+        [["sudo", "snap", "refresh", "--list"]],
+        [["sudo", "snap", "refresh"]]),
+    # Integrate pip2 check?
     Packager(
         "pip2",
-        ["pip2", "list", "--outdated"],
-        lambda output: (output.count("\n") - 2, output),
-        [
-            ["pip2", "--upgrade"]
-        ]),
+        [["sudo", "-H", "pip2", "list", "--outdated"]],
+        [["sudo", "-H", "pipdate"]]),
+    # Integrate pip3 check?
     Packager(
         "pip3",
-        ["pip3", "list", "--outdated"],
-        lambda output: (output.count("\n") - 2, output),
-        [
-            ["pip3", "--upgrade"]
-        ])
+        [["sudo", "-H", "pip3", "list", "--outdated"]],
+        [["sudo", "-H", "pipdate3"]]),
 ]
 
 
@@ -56,44 +65,64 @@ def command_exists(command):
     return getstatusoutput("which " + command)[0] == 0
 
 
+def execute(command, need_output):
+    """
+    Execute a command.
+
+    param need_output: If True the output is returned otherwise shown on the
+    console.
+    """
+    from subprocess import PIPE, Popen
+    if command_exists(command[0]):
+        if need_output:
+            process = Popen(command, stdout=PIPE, stderr=PIPE)
+        else:
+            process = Popen(command, stderr=PIPE)
+        output, err = process.communicate()
+        if process.returncode != 0:
+            print("\033[1;31;40m " + " ".join(command)
+                  + " failed.\033[0;37;40m")
+            print("\033[1;31;40m " + err.decode() + "\033[0;37;40m")
+        return (output, process.returncode)
+    else:
+        print("\033[1;31;40m "
+              + "The command " + command[0] + " does not exist.\033[0;37;40m")
+        return None
+
+
 def try_update_packager(packager):
     """Ask whether to update the given package manager and eventually do so."""
-    from subprocess import check_call
-    update = None
-    while update is None:
+    upgrade = None
+    while upgrade is None:
         choice = input("Would you like to update? [y/N]")
         if choice == "y":
-            update = True
-        elif choice == "n":
-            update = False
-    if update:
-        for command in packager.upgrade_commands:
-            check_call(["sudo"] + command)
+            upgrade = True
+        elif choice in ("n", ""):
+            upgrade = False
+    if upgrade:
+        for upgrade_command in packager.upgrade_commands:
+            execute(upgrade_command, False)
 
 
 def iterate_package_manager():
     """Search for all known package managers and updates their packages."""
-    from subprocess import Popen, PIPE
     for packager in PACKAGER:
         if command_exists(packager.command):
             print("Checking " + packager.command)
-            update_process = Popen(["sudo"] + packager.update_command,
-                                   stdout=PIPE, stderr=PIPE)
-            output, err = update_process.communicate()
-            returncode = update_process.returncode
+            for update_command in packager.update_commands:
+                output, returncode = execute(update_command, True)
             if returncode == 0:
-                print(err)
-                num_updatable, updateables \
-                    = packager.get_updateable(output.decode())
-                if num_updatable <= 0:
-                    print("All packages are up to date.")
+                # print(err)
+                packagelist \
+                    = __get_updatable(packager.command, output.decode())
+                if packagelist == []:
+                    print("\033[1;32;40m All packages are up to date."
+                          "\033[0;37;40m")
                 else:
-                    print(str(num_updatable)
-                          + " packages to update: " + updateables)
+                    print("\033[1;32;40m " + str(len(packagelist))
+                          + " packages to update: " + " ".join(packagelist)
+                          + "\033[0;37;40m")
                     try_update_packager(packager)
-            else:
-                print(packager.command + " failed.")
-                print(err)
 
 
 if __name__ == "__main__":
