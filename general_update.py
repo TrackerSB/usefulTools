@@ -37,7 +37,7 @@ PACKAGER = [
         "apt",
         [
             ["sudo", "apt", "update"],
-            ["sudo", "apt", "list", "--upgradable"]
+            ["apt", "list", "--upgradable"]
         ], [
             ["sudo", "apt", "upgrade"],
             ["sudo", "apt", "dist-upgrade"],
@@ -46,17 +46,17 @@ PACKAGER = [
         ]),
     Packager(
         "snap",
-        [["sudo", "snap", "refresh", "--list"]],
+        [["snap", "refresh", "--list"]],
         [["sudo", "snap", "refresh"]]),
     # Integrate pip2 check?
     Packager(
         "pip2",
-        [["sudo", "-H", "pip2", "list", "--outdated"]],
+        [["pip2", "list", "--outdated"]],
         [["sudo", "-H", "pipdate"]]),
     # Integrate pip3 check?
     Packager(
         "pip3",
-        [["sudo", "-H", "pip3", "list", "--outdated"]],
+        [["pip3", "list", "--outdated"]],
         [["sudo", "-H", "pipdate3"]]),
 ]
 
@@ -106,7 +106,7 @@ def try_update_packager(packager):
             execute(upgrade_command, False)
 
 
-def iterate_package_manager():
+def upgrade_package_manager():
     """Search for all known package managers and updates their packages."""
     for packager in PACKAGER:
         if command_exists(packager.command):
@@ -127,5 +127,50 @@ def iterate_package_manager():
                     try_update_packager(packager)
 
 
+def count_updatable_packages(avoid_sudo):
+    """Count all updatable packages."""
+    updatable_packages = []
+    for packager in PACKAGER:
+        if command_exists(packager.command):
+            for update_command in packager.update_commands:
+                if not (avoid_sudo and update_command[0] == "sudo"):
+                    output, returncode = execute(update_command, True)
+            if returncode == 0:
+                packagelist = __get_updatable(packager.command, output.decode())
+                if packagelist != []:
+                    updatable_packages.append(
+                        (packager.command, len(packagelist)))
+            else:
+                updatable_packages.append((packager.command, "⛒"))
+    return updatable_packages
+
+
+def main():
+    """Parse command line arguments and execute appropriate action."""
+    from argparse import ArgumentParser
+    # TODO Add an option defining choices for selecting which package managers
+    # to concern.
+    parser = ArgumentParser("Manage updates of a bunch of package managers.")
+    parser.add_argument("-c", "--count-updatable",# nargs="?",
+                        action="store_true",
+                        help="Print the total number of updatable packages for "
+                             "each registered package manager.")
+    parser.add_argument("--allow-sudo",# nargs="?",
+                        action="store_true",
+                        help="When -c is specified allow execution of sudo "
+                             "commands. You may not want that if you only "
+                             "want to know how many packages can be updated "
+                             "without having sudo permissions. But you may "
+                             "want to specify this option if the number of "
+                             "updatable packages should be updated.")
+    args = parser.parse_args()
+    if args.count_updatable:
+        updatable_packages = count_updatable_packages(not args.allow_sudo)
+        print(" ".join(
+            map(lambda u: u[0] + ": "+ str(u[1]), updatable_packages)))
+    else:
+        upgrade_package_manager()
+
+
 if __name__ == "__main__":
-    iterate_package_manager()
+    main()
