@@ -52,12 +52,12 @@ PACKAGER = [
     # Integrate pip2 check?
     Packager(
         "pip2",
-        [["pip2", "list", "--outdated"]],
+        [["pip2", "list", "--outdated"]],  # Add --not-required?
         [["sudo", "-H", "pipdate"]]),
     # Integrate pip3 check?
     Packager(
         "pip3",
-        [["pip3", "list", "--outdated"]],
+        [["pip3", "list", "--outdated"]],  # Add --not-required?
         [["sudo", "-H", "pipdate3"]]),
 ]
 
