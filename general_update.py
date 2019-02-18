@@ -18,7 +18,8 @@ Packager = namedtuple("Packager", "command update_commands upgrade_commands")
 
 def __get_updatable(packager, update_output):
     if packager == "apt":
-        packagelist = update_output.splitlines()
+        packagelist = list(map(lambda line: line.partition('/')[0],
+                               update_output.splitlines()))
         del packagelist[0]
     elif packager == "snap":
         packagelist = []
@@ -39,7 +40,7 @@ PACKAGER = [
             ["sudo", "apt", "update"],
             ["apt", "list", "--upgradable"]
         ], [
-            ["sudo", "apt", "upgrade"],
+            ["sudo", "apt", "-y", "upgrade"],
             ["sudo", "apt", "dist-upgrade"],
             ["sudo", "apt", "autoremove"],
             ["sudo", "apt", "autoclean"]
