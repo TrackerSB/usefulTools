@@ -166,7 +166,7 @@ def main():
     args = parser.parse_args()
     if args.count_updatable:
         updatable_packages = count_updatable_packages(not args.allow_sudo)
-        print(" ".join(
+        print(" | ".join(
             map(lambda u: u[0] + ": "+ str(u[1]), updatable_packages)))
     else:
         upgrade_package_manager()
