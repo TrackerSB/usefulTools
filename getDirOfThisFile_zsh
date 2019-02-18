@@ -1,0 +1,12 @@
+#!/bin/zsh
+
+#Get directory of this file
+SOURCE="${(%):-%N}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  currentDir="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$currentDir/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+currentDir="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+echo $currentDir
