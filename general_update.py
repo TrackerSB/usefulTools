@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 A simple program updating all package managers supported.
 
