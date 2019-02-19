@@ -1,0 +1,50 @@
+#!/bin/zsh
+
+function getAbsPath {
+    if [[ -d "$1" ]]; then
+        absPath=$(cd "$1"; pwd)
+        echo "$absPath"
+    else
+        (>&2 echo "\"$1\" does not exist or is no directory.")
+        return 1
+    fi
+}
+
+function checkDirectories {
+    cd $1 2>/dev/null
+
+    if [[ $# -gt 0 ]]; then
+        branch=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --always 2>/dev/null)
+        if [[ -z "$branch" ]]; then
+            for entry in $(find "$1" -maxdepth 1 -type d 2>/dev/null); do
+                if [[ "$1" != "$entry" ]]; then
+                    checkDirectories "$entry"
+                fi
+            done
+        else
+            echo "Repo: $1"
+            echo "Current branch: $branch"
+            git fetch -q
+            read -rA downupcount <<< "$(git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null)"
+            echo "↘ ${downupcount[1]} ↗ ${downupcount[2]}"
+        fi
+    else
+        (>&2 echo "checkDirectories did not recieve a directory to check.")
+        return 1
+    fi
+}
+
+rootDir=""
+if [[ $# -gt 0 ]]; then
+    rootDir=$1
+else
+    rootDir=$(pwd)
+fi
+rootDir=$(getAbsPath $rootDir)
+if [[ $? == 0 ]]; then
+    if [[ "$rootDir" != */$ ]]; then
+        rootDir="$rootDir/"
+    fi
+
+    checkDirectories "$rootDir"
+fi
