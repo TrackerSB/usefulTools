@@ -11,7 +11,7 @@ Contains some small (but sometimes really useful) scripts for daily work on prog
 |general_update.py|Updates package lists of various package manager and upgrades them if wanted|
 |getDirOfThisFile_bash|This is an executable script but it is quite useful for other scripts when trying to determine where the script containing these lines is located|
 |getDirOfThisFile_bash|This is an executable script but it is quite useful for other scripts when trying to determine where the script containing these lines is located|
-|gitadd|A command useful when commiting huge amounts of data or a huge number of files|
+|gitadd|A command useful when committing huge amounts of data or a huge number of files|
 |pullAll|Checks all git repos recursively whether they need to be updated and whether they can be. If so then the script asks you whether you want to update|
 |pullRebasePush|A single command for pulling, rebasing and pushing your local commits|
 |recordGource.sh|An complete example command for saving gource output as mp4 file|
