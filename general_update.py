@@ -150,6 +150,13 @@ def count_updatable_packages(avoid_sudo):
 def main():
     """Parse command line arguments and execute appropriate action."""
     from argparse import ArgumentParser
+    from signal import signal, SIGINT
+
+    def signal_handler(sig, frame):
+        print("generalUpdate got abborted by the user.")
+        exit(0)
+    signal(SIGINT, signal_handler)
+
     # TODO Add an option defining choices for selecting which package managers
     # to concern.
     parser = ArgumentParser("Manage updates of a bunch of package managers.")
