@@ -86,11 +86,12 @@ def execute(command, need_output):
             print("\033[1;31;40m " + " ".join(command)
                   + " failed.\033[0;37;40m")
             print("\033[1;31;40m " + err.decode() + "\033[0;37;40m")
-        return (output, process.returncode)
+        command_result = (output, process.returncode)
     else:
         print("\033[1;31;40m "
               + "The command " + command[0] + " does not exist.\033[0;37;40m")
-        return None
+        command_result = None
+    return command_result
 
 
 def try_update_packager(packager):
