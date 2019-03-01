@@ -68,6 +68,17 @@ def command_exists(command):
     return getstatusoutput("which " + command)[0] == 0
 
 
+def print_error(message):
+    """Print an error message to the console."""
+    from sys import stderr
+    print("\033[1;31;40m " + message + "\033[0;37;40m", file=stderr)
+
+
+def print_emph(message):
+    """Print an info message easy to recognize for the user."""
+    print("\033[1;32;40m " + message + "\033[0;37;40m")
+
+
 def execute(command, need_output):
     """
     Execute a command.
@@ -83,13 +94,11 @@ def execute(command, need_output):
             process = Popen(command, stderr=PIPE)
         output, err = process.communicate()
         if process.returncode != 0:
-            print("\033[1;31;40m " + " ".join(command)
-                  + " failed.\033[0;37;40m")
-            print("\033[1;31;40m " + err.decode() + "\033[0;37;40m")
+            print_error(" ".join(command) + " failed.")
+            print_error(err.decode())
         command_result = (output, process.returncode)
     else:
-        print("\033[1;31;40m "
-              + "The command " + command[0] + " does not exist.\033[0;37;40m")
+        print_error("The command " + command[0] + " does not exist.")
         command_result = None
     return command_result
 
@@ -120,12 +129,10 @@ def upgrade_package_manager():
                 packagelist \
                     = __get_updatable(packager.command, output.decode())
                 if packagelist == []:
-                    print("\033[1;32;40m All packages are up to date."
-                          "\033[0;37;40m")
+                    print_emph("All packages are up to date.")
                 else:
-                    print("\033[1;32;40m " + str(len(packagelist))
-                          + " packages to update: " + " ".join(packagelist)
-                          + "\033[0;37;40m")
+                    print_emph(str(len(packagelist)) + " packages to update: "
+                               + " ".join(packagelist))
                     try_update_packager(packager)
 
 
