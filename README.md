@@ -16,3 +16,4 @@ Contains some small (but sometimes really useful) scripts for daily work on prog
 |pullRebasePush|A single command for pulling, rebasing and pushing your local commits|
 |recordGource.sh|An complete example command for saving gource output as mp4 file|
 |renameFormats|Replaces all files having a given format with the other given format|
+|word_freqs.py|Returns the word frequencies of a PDF file|
