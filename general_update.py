@@ -148,7 +148,8 @@ def count_updatable_packages(avoid_sudo):
                 if not (avoid_sudo and update_command[0] == "sudo"):
                     output, returncode = execute(update_command, True)
             if returncode == 0:
-                packagelist = __get_updatable(packager.command, output.decode())
+                packagelist = __get_updatable(
+                    packager.command, output.decode())
                 if packagelist != []:
                     updatable_packages.append(
                         (packager.command, len(packagelist)))
@@ -162,7 +163,7 @@ def main():
     from argparse import ArgumentParser
     from signal import signal, SIGINT
 
-    def signal_handler(sig, frame):
+    def signal_handler(_sig, _frame):
         print("generalUpdate got abborted by the user.")
         exit(0)
     signal(SIGINT, signal_handler)
@@ -170,11 +171,13 @@ def main():
     # TODO Add an option defining choices for selecting which package managers
     # to concern.
     parser = ArgumentParser("Manage updates of a bunch of package managers.")
-    parser.add_argument("-c", "--count-updatable",# nargs="?",
+    parser.add_argument("-c", "--count-updatable",
+                        # nargs="?",
                         action="store_true",
-                        help="Print the total number of updatable packages for "
-                             "each registered package manager.")
-    parser.add_argument("--allow-sudo",# nargs="?",
+                        help="Print the total number of updatable packages "
+                             "for each registered package manager.")
+    parser.add_argument("--allow-sudo",
+                        # nargs="?",
                         action="store_true",
                         help="When -c is specified allow execution of sudo "
                              "commands. You may not want that if you only "
@@ -186,7 +189,7 @@ def main():
     if args.count_updatable:
         updatable_packages = count_updatable_packages(not args.allow_sudo)
         print(" | ".join(
-            map(lambda u: u[0] + ": "+ str(u[1]), updatable_packages)))
+            map(lambda u: u[0] + ": " + str(u[1]), updatable_packages)))
     else:
         upgrade_package_manager()
 
