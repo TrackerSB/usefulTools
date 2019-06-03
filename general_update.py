@@ -24,7 +24,8 @@ def __get_updatable(packager, update_output):
     elif packager == "snap":
         packagelist = list(map(lambda line: line.partition(' ')[0],
                                update_output.splitlines()))
-        del packagelist[0]
+        if packagelist:
+            del packagelist[0]
 
     elif packager in ("pip2", "pip3"):
         packagelist = list(map(lambda line: line.partition(' ')[0],
