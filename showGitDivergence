@@ -22,16 +22,18 @@ function checkDirectories {
                 fi
             done
         else
+            echo "Repo: $1"
+            echo "Current branch/tag: $branch"
+            newTags=$(git fetch --tags)
+            echo "$newTags"  # FIXME Print tags nicely
             git fetch -q
             read -rA downupcount <<< "$(git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null)"
             downcount=${downupcount[1]}
             upcount=${downupcount[2]}
             if [[ $downcount -gt 0 || $upcount -gt 0 ]]; then
-                echo "Repo: $1"
-                echo "Current branch: $branch"
                 echo "↘ ${downupcount[1]} ↗ ${downupcount[2]}"
-                echo
             fi
+            echo
         fi
     else
         (>&2 echo "checkDirectories did not recieve a directory to check.")
