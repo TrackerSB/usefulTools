@@ -1,0 +1,51 @@
+\documentclass{beamer}
+
+% Based on https://tex.stackexchange.com/a/490743/187883
+
+\usepackage{smartdiagram}
+\usepackage{tikz}
+
+\tikzset{%
+    Partha/.cd,
+    start angle/.initial=0,
+    orientation/.initial=1
+}
+
+\makeatletter
+\newlength{\startAngleOffset} % chktex 15
+\newcommand{\BubbleDiagramAnimated}[2][]{%
+    \begin{tikzpicture}[%
+        every node/.style={align=center,let hypenation},
+        Partha/.cd,#1
+    ]
+    \setlength{\startAngleOffset}{%
+        \ifnumequal{\pgfkeysvalueof{/tikz/Partha/orientation}}{1}{0pt}{-180pt}
+    }
+    \foreach \smitem [count=\xi] in {#2}{\global\let\maxsmitem\xi}
+    \pgfmathtruncatemacro\actualnumitem{\maxsmitem-1}
+    \foreach \smitem [count=\xi] in {#2}{%
+        \ifnumequal{\xi}{1}{ %true
+            \node[bubble center node, smvisible on=<\xi->](center bubble){\smitem};
+        }{%false
+            \pgfmathtruncatemacro{\xj}{\xi-1}
+            \pgfmathtruncatemacro{\angle}{
+                \pgfkeysvalueof{/tikz/Partha/start angle}
+                + (\pgfkeysvalueof{/tikz/Partha/orientation} * 360 / \actualnumitem * \xj)
+                + \startAngleOffset
+            }
+            \edef\col{\@nameuse{color@\xj}}
+            \node[bubble node, smvisible on=<\xi->](module\xi) at (center bubble.\angle) {\smitem};
+        }%
+    }%
+    \end{tikzpicture}
+}
+\makeatother
+
+\begin{document}
+\begin{frame}[plain]
+    \BubbleDiagramAnimated[%
+        orientation=-1,
+        start angle=90
+    ]{Center,A,B,C,D}
+\end{frame}
+\end{document}
