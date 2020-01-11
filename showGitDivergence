@@ -24,7 +24,7 @@ function checkDirectories {
         else
             echo "Repo: $1"
             echo "Current branch/tag: $branch"
-            newTags=$(git fetch --tags)
+            newTags=$(git fetch --tags -f)
             echo "$newTags"  # FIXME Print tags nicely
             git fetch -q
             read -rA downupcount <<< "$(git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null)"
