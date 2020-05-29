@@ -31,12 +31,17 @@ def __get_updatable(packager, update_output):
         packagelist = list(map(lambda line: line.partition(' ')[0],
                                update_output.splitlines()))
         del packagelist[0:2]
+    elif packager == "pacman":
+        packagelist = list(map(lambda line: line.partition(' ')[0],
+                               update_output.splitlines()))
     else:
         print("The packager " + packager + " is not supported.")
         packagelist = []
     return packagelist
 
 
+# NOTE The last command of the update_command sequence mu<F4><F3>st return the list of updatable packages
+# NOTE The last command must NOT require sudo privileges
 PACKAGER = [
     Packager(
         "apt",
@@ -63,6 +68,16 @@ PACKAGER = [
         "pip3",
         [["pip3", "list", "--outdated", "--not-required"]],
         [["sudo", "pipdate3"]]),
+    Packager(
+        "pacman",
+        [
+            ["sudo", "pacman", "-Sy"],
+            ["pacman", "-Qu"]
+        ], [
+            ["sudo", "pacman", "-Su", "--noconfirm"],
+            ["sudo", "pacman", "-Sc", "--noconfirm"],
+            ["sudo", "pacman", "-Rs", "$(pacman -Qqdt)", "--noconfirm"]
+        ]),
 ]
 
 
