@@ -22,16 +22,18 @@ function checkDirectories {
                 fi
             done
         else
-            echo "Repo: $1"
-            echo "Current branch/tag: $branch"
+            echo "Repo: \033[33m$1\033[0m"
+            echo "Current branch/tag: \033[33m$branch\033[0m"
             newTags=$(git fetch --tags -f)
-            echo "$newTags"  # FIXME Print tags nicely
+            if [[ -n "$newTags" ]]; then
+                echo "\033[34m$newTags\033[0m"  # FIXME Print tags nicely
+            fi
             git fetch -q
             read -rA downupcount <<< "$(git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null)"
             downcount=${downupcount[1]}
             upcount=${downupcount[2]}
             if [[ $downcount -gt 0 || $upcount -gt 0 ]]; then
-                echo "↘ ${downupcount[1]} ↗ ${downupcount[2]}"
+                echo "\033[1;31m↘ ${downupcount[1]} ↗ ${downupcount[2]}\033[0m"
             fi
             echo
         fi
