@@ -204,7 +204,7 @@ def count_updatable_packages(avoid_sudo):
                     updatable_packages.append(
                         (packager.command, len(packagelist)))
             else:
-                updatable_packages.append((packager.command, ""))
+                updatable_packages.append((packager.command, "❌"))
     return updatable_packages
 
 
