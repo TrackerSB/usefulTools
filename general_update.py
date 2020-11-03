@@ -14,6 +14,7 @@ from collections import namedtuple
 
 
 Packager = namedtuple("Packager", "command update_commands upgrade_commands")
+suppress_output = False # Suppress any output which goes beyond anything but the actual result
 
 
 def __get_updatable(packager, update_output):
@@ -35,7 +36,7 @@ def __get_updatable(packager, update_output):
         packagelist = list(map(lambda line: line.partition(' ')[0],
                                update_output.splitlines()))
     else:
-        print("The packager " + packager + " is not supported.")
+        print_error("The packager " + packager + " is not supported.")
         packagelist = []
     return packagelist
 
@@ -76,7 +77,7 @@ PACKAGER = [
         ], [
             ["sudo", "pacman", "-Su", "--noconfirm"],
             ["sudo", "pacman", "-Sc", "--noconfirm"],
-            ["sudo", "pacman", "-Rs", "$(pacman -Qqdt)", "--noconfirm"]
+            ["sudo", "pacman", "-Rs", "$(pacman -Qqdt)", "--noconfirm"] # 2020-11-03: Requires cracklib
         ]),
 ]
 
@@ -87,15 +88,41 @@ def command_exists(command):
     return getstatusoutput("which " + command)[0] == 0
 
 
-def print_error(message):
+def _get_lines_indented(lines, indent):
+    if isinstance(lines, str): # It's a single line
+        return " "*indent + lines
+    else:
+        return " "*indent.join(lines)
+
+
+def print_out(message, indent=0):
+    """Print an info message easy to recognize for the user."""
+    if not suppress_output:
+        print("\033[1;37;40m" + _get_lines_indented(message, indent) + "\033[m")
+
+
+def print_error(message, indent=0):
     """Print an error message to the console."""
     from sys import stderr
-    print("\033[1;31;40m " + message + "\033[0;37;40m", file=stderr)
+    if not suppress_output:
+        print("\033[1;31;40m" + _get_lines_indented(message, indent) + "\033[m", file=stderr)
 
 
-def print_emph(message):
+def print_emph(message, indent=0):
     """Print an info message easy to recognize for the user."""
-    print("\033[1;32;40m " + message + "\033[0;37;40m")
+    if not suppress_output:
+        print("\033[1;32;40m" + _get_lines_indented(message, indent) + "\033[m")
+
+
+def print_note(message, indent=0):
+    """Print an debug message or a notice."""
+    if not suppress_output:
+        print("\033[1;30;40m" + _get_lines_indented(message, indent) + "\033[m")
+
+
+def print_result(line):
+    """Print output relating to actual results of this command"""
+    print(line)
 
 
 def execute(command, need_output):
@@ -113,11 +140,16 @@ def execute(command, need_output):
             process = Popen(command, stderr=PIPE)
         output, err = process.communicate()
         if process.returncode != 0:
-            print_error(" ".join(command) + " failed.")
-            print_error(err.decode())
+            print_error("'" + " ".join(command) + "' failed.", 2)
+            print_error("Received error:", 2)
+            error_output = err.decode()
+            print_error(error_output if error_output else "None", 4)
+            print_note("Received output:", 2)
+            standard_output = output
+            print_note(output if output else "None", 4)
         command_result = (output, process.returncode)
     else:
-        print_error("The command " + command[0] + " does not exist.")
+        print_error("The command '" + command[0] + "' does not exist.", 2)
         command_result = None
     return command_result
 
@@ -133,25 +165,27 @@ def try_update_packager(packager):
             upgrade = False
     if upgrade:
         for upgrade_command in packager.upgrade_commands:
-            execute(upgrade_command, False)
+            output, returncode = execute(upgrade_command, False)
 
 
 def upgrade_package_manager():
     """Search for all known package managers and updates their packages."""
     for packager in PACKAGER:
         if command_exists(packager.command):
-            print("Checking " + packager.command)
+            print_out("Checking " + packager.command)
             for update_command in packager.update_commands:
                 output, returncode = execute(update_command, True)
+                if returncode != 0:
+                    print_error("Could not update " + packager.command + " => Assume there is no package to update", 2)
+                    break;
             if returncode == 0:
-                # print(err)
                 packagelist \
                     = __get_updatable(packager.command, output.decode())
                 if packagelist == []:
-                    print_emph("All packages are up to date.")
+                    print_emph("All packages are up to date.", 2)
                 else:
                     print_emph(str(len(packagelist)) + " packages to update: "
-                               + " ".join(packagelist))
+                               + " ".join(packagelist), 2)
                     try_update_packager(packager)
 
 
@@ -180,7 +214,7 @@ def main():
     from signal import signal, SIGINT
 
     def signal_handler(_sig, _frame):
-        print("generalUpdate got abborted by the user.")
+        print_error("generalUpdate got abborted by the user.")
         exit(0)
     signal(SIGINT, signal_handler)
 
@@ -191,7 +225,12 @@ def main():
                         # nargs="?",
                         action="store_true",
                         help="Print the total number of updatable packages "
-                             "for each registered package manager.")
+                             "for each registered package manager. Any output "
+                             "is disabled per default.")
+    parser.add_argument("--enable-output",
+                        action="store_true",
+                        help="If specified enable error, warning and info "
+                             "output.")
     parser.add_argument("--allow-sudo",
                         # nargs="?",
                         action="store_true",
@@ -203,8 +242,10 @@ def main():
                              "updatable packages should be updated.")
     args = parser.parse_args()
     if args.count_updatable:
+        global suppress_output
+        suppress_output = not args.enable_output
         updatable_packages = count_updatable_packages(not args.allow_sudo)
-        print(" | ".join(
+        print_result(" | ".join(
             map(lambda u: u[0] + ": " + str(u[1]), updatable_packages)))
     else:
         upgrade_package_manager()
