@@ -79,7 +79,7 @@ PACKAGER = [
         "Pacman",
         "pacman",
         [
-            ["sudo", "pacman", "-Sy"],
+            ["sudo", "pacman", "-Syy"],
             ["pacman", "-Qu"]
         ], [
             ["sudo", "pacman", "-Su", "--noconfirm"],
