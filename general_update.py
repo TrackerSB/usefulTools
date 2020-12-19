@@ -13,38 +13,41 @@ from __future__ import print_function
 from collections import namedtuple
 
 
-Packager = namedtuple("Packager", "command update_commands upgrade_commands")
+Packager = namedtuple("Packager", "name command update_commands upgrade_commands")
 suppress_output = False # Suppress any output which goes beyond anything but the actual result
 
 
 def __get_updatable(packager, update_output):
-    if packager == "apt":
+    if packager == "Aptitude":
         packagelist = list(map(lambda line: line.partition('/')[0],
                                update_output.splitlines()))
         del packagelist[0]
-    elif packager == "snap":
+    elif packager == "Snap":
         packagelist = list(map(lambda line: line.partition(' ')[0],
                                update_output.splitlines()))
         if packagelist:
             del packagelist[0]
 
-    elif packager in ("pip2", "pip3"):
+    elif packager in ("Python2", "Python3"):
         packagelist = list(map(lambda line: line.partition(' ')[0],
                                update_output.splitlines()))
         del packagelist[0:2]
-    elif packager == "pacman":
+    elif packager == "Pacman":
         packagelist = list(map(lambda line: line.partition(' ')[0],
                                update_output.splitlines()))
+    elif packager == "AUR":
+        packagelist = update_output.split()
     else:
         print_error("The packager " + packager + " is not supported.")
         packagelist = []
     return packagelist
 
 
-# NOTE The last command of the update_command sequence mu<F4><F3>st return the list of updatable packages
-# NOTE The last command must NOT require sudo privileges
+# NOTE The last command of the update_command sequence must return the list of
+# updatable packages and must NOT require sudo privileges
 PACKAGER = [
     Packager(
+        "Aptitude",
         "apt",
         [
             ["sudo", "apt", "update"],
@@ -56,20 +59,24 @@ PACKAGER = [
             ["sudo", "apt", "autoclean"]
         ]),
     Packager(
+        "Snap",
         "snap",
         [["snap", "refresh", "--list"]],
         [["sudo", "snap", "refresh"]]),
     # Integrate pip2 check?
     Packager(
+        "Python2",
         "pip2",
         [["pip2", "list", "--outdated", "--not-required"]],
         [["sudo", "pipdate"]]),
     # Integrate pip3 check?
     Packager(
+        "Python3",
         "pip3",
         [["pip3", "list", "--outdated", "--not-required"]],
         [["sudo", "pipdate3"]]),
     Packager(
+        "Pacman",
         "pacman",
         [
             ["sudo", "pacman", "-Sy"],
@@ -92,7 +99,7 @@ def _get_lines_indented(lines, indent):
     if isinstance(lines, str): # It's a single line
         return " "*indent + lines
     else:
-        return " "*indent.join(lines)
+        return (" "*indent).join(lines)
 
 
 def print_out(message, indent=0):
@@ -150,7 +157,7 @@ def execute(command, need_output):
         command_result = (output, process.returncode)
     else:
         print_error("The command '" + command[0] + "' does not exist.", 2)
-        command_result = None
+        command_result = (None, -1)
     return command_result
 
 
@@ -172,21 +179,24 @@ def upgrade_package_manager():
     """Search for all known package managers and updates their packages."""
     for packager in PACKAGER:
         if command_exists(packager.command):
-            print_out("Checking " + packager.command)
+            print_out("Checking '" + packager.name + "'")
             for update_command in packager.update_commands:
                 output, returncode = execute(update_command, True)
                 if returncode != 0:
-                    print_error("Could not update " + packager.command + " => Assume there is no package to update", 2)
+                    print_error("Could not update '" + packager.name + "' => Assume there is no package to update", 2)
                     break;
             if returncode == 0:
                 packagelist \
-                    = __get_updatable(packager.command, output.decode())
+                    = __get_updatable(packager.name, output.decode())
                 if packagelist == []:
                     print_emph("All packages are up to date.", 2)
                 else:
                     print_emph(str(len(packagelist)) + " packages to update: "
                                + " ".join(packagelist), 2)
                     try_update_packager(packager)
+        else:
+            print_note("Command " + packager.command + " not found. "
+                    + packager.name + " is skipped.")
 
 
 def count_updatable_packages(avoid_sudo):
@@ -199,12 +209,13 @@ def count_updatable_packages(avoid_sudo):
                     output, returncode = execute(update_command, True)
             if returncode == 0:
                 packagelist = __get_updatable(
-                    packager.command, output.decode())
+                    packager.name, output.decode())
                 if packagelist != []:
+                    print_note(",".join(packagelist))
                     updatable_packages.append(
-                        (packager.command, len(packagelist)))
+                        (packager.name, len(packagelist)))
             else:
-                updatable_packages.append((packager.command, "❌"))
+                updatable_packages.append((packager.name, "❌"))
     return updatable_packages
 
 
