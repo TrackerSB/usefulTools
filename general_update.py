@@ -210,6 +210,7 @@ class ArchUserRepo(UpdatablePackageManager):
             # FIXME Do not ignore exit code
             # FIXME Check whether the up count is greater zero, i.e. whether the repo can be updated
             # FIXME Check whether there are any stashes etc.
+            # FIXME Detect repos which have up to date history but whose package was not installed
             down_up_count, exit_code \
                 = _execute(["git", "rev-list", "--count", "--left-right", "@{upstream}...HEAD"], True, path)
             down_count = down_up_count.split("\t", 1)[0]
