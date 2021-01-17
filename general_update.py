@@ -106,7 +106,7 @@ class UpdatablePackageManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def update_package_list():
+    def update_package_list() -> None:
         pass
 
     @staticmethod
@@ -131,7 +131,7 @@ class Aptitude(UpdatablePackageManager):
         return _command_exists("apt")
 
     @staticmethod
-    def update_package_list():
+    def update_package_list() -> None:
         _execute(["sudo", "apt", "update"], True)
 
     @staticmethod
@@ -162,7 +162,7 @@ class Pacman(UpdatablePackageManager):
         return _command_exists("pacman")
 
     @staticmethod
-    def update_package_list():
+    def update_package_list() -> None:
         _execute(["sudo", "pacman", "-Syy"], False)
 
     @staticmethod
@@ -192,7 +192,7 @@ class Python2(UpdatablePackageManager):
         return _command_exists("pip2")
 
     @staticmethod
-    def update_package_list():
+    def update_package_list() -> None:
         _print_warn("Updating package list is not implemented yet", 2)
 
     @staticmethod
@@ -220,7 +220,7 @@ class Python3(UpdatablePackageManager):
         return _command_exists("pip3")
 
     @staticmethod
-    def update_package_list():
+    def update_package_list() -> None:
         _print_warn("Updating package list is not implemented yet", 2)
 
     @staticmethod
@@ -248,7 +248,7 @@ class Snap(UpdatablePackageManager):
         return _command_exists("snap")
 
     @staticmethod
-    def update_package_list():
+    def update_package_list() -> None:
         # Not explicitly required since snap package lists are updated automatically
         # See https://snapcraft.io/docs/keeping-snaps-up-to-date
         pass
