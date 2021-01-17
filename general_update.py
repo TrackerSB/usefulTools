@@ -7,9 +7,9 @@ It searches for different package management tools like apt,
 snap and pip, shows you whether there is something to update and if so asks
 you whether to update these.
 """
-
 from abc import ABC, abstractmethod
-from typing import List, Union, Tuple, Optional, Type
+from pathlib import Path
+from typing import List, Union, Tuple, Optional, Type, TypeVar
 
 # Suppress any output which goes beyond anything but the actual result
 _enable_console_output = True  # NOTE This value may be changed by user parameters
@@ -65,7 +65,8 @@ def _command_exists(command):
     return getstatusoutput("which " + command)[0] == 0
 
 
-def _execute(command: List[str], capture_stdout: bool) -> Tuple[Optional[str], int]:
+def _execute(command: List[str], capture_stdout: bool, working_dir: Optional[Path] = None) \
+        -> Tuple[Optional[str], int]:
     """
     Execute a command.
 
@@ -74,12 +75,12 @@ def _execute(command: List[str], capture_stdout: bool) -> Tuple[Optional[str], i
     """
     from subprocess import DEVNULL, PIPE, Popen
     if capture_stdout:
-        process = Popen(command, stdout=PIPE, stderr=PIPE)
+        process = Popen(command, stdout=PIPE, stderr=PIPE, cwd=working_dir)
     else:
         if _enable_console_output:
-            process = Popen(command, stderr=PIPE)
+            process = Popen(command, stderr=PIPE, cwd=working_dir)
         else:
-            process = Popen(command, stdout=DEVNULL, stderr=PIPE)
+            process = Popen(command, stdout=DEVNULL, stderr=PIPE, cwd=working_dir)
     std_out, std_err = process.communicate()
     output = std_out.decode() if std_out else "None"
     if process.returncode != 0:
@@ -150,6 +151,84 @@ class Aptitude(UpdatablePackageManager):
         _execute(["sudo", "apt", "-y", "dist-upgrade"], False)
         _execute(["sudo", "apt", "-y", "autoremove"], False)
         _execute(["sudo", "apt", "-y", "autoclean"], False)
+
+
+class ArchUserRepo(UpdatablePackageManager):
+    from pathlib import Path
+    from typing import Callable, Dict
+    _aur_base_dir: Path = Path("/home/stefan/gitrepos/aurPackages")
+    _T: TypeVar = TypeVar("_T")
+
+    @staticmethod
+    def get_pretty_name() -> str:
+        return "AUR"
+
+    @staticmethod
+    def is_available() -> bool:
+        return _command_exists("pacman") \
+               and _command_exists("git") \
+               and _command_exists("makepkg") \
+               and ArchUserRepo._aur_base_dir.exists()
+
+    @staticmethod
+    def _is_git_dir(path: Path) -> bool:
+        is_git_dir = False
+        if path.is_dir():
+            branch_name, exit_code = _execute(["git", "symbolic-ref", "--short", "HEAD"], True, path)
+            if exit_code != 0:
+                branch_name, exit_code = _execute(["git", "describe", "--tags", "--always"], True, path)
+                if exit_code != 0:
+                    _print_warn("Could not determine whether {} is a git directory".format(str(path.absolute())), 2)
+            if branch_name:
+                is_git_dir = True
+        return is_git_dir
+
+    @staticmethod
+    def _iterate_git_dirs(root: Path, actions: Callable[[Path], _T]) -> Dict[Path, _T]:
+        git_dir_results = {}
+        if root.is_dir():
+            for path in root.iterdir():
+                if path.is_dir():
+                    if ArchUserRepo._is_git_dir(path):
+                        _print_info("Found git dir '{}'".format(str(path.absolute())))
+                        git_dir_results[path] = actions(path)
+                    else:
+                        git_dir_sub_results = ArchUserRepo._iterate_git_dirs(path, actions)
+                        git_dir_results.update(git_dir_sub_results)
+        return git_dir_results
+
+    @staticmethod
+    def update_package_list() -> None:
+        ArchUserRepo._iterate_git_dirs(ArchUserRepo._aur_base_dir,
+                                       lambda p: _execute(["git", "fetch", "--all", "--prune"], False, p))
+
+    @staticmethod
+    def _get_updatable_git_repos() -> List[Path]:
+        updatable_repos = []
+
+        def _remember_if_has_updates(path: Path) -> None:
+            # FIXME Do not ignore exit code
+            # FIXME Check whether the up count is greater zero, i.e. whether the repo can be updated
+            # FIXME Check whether there are any stashes etc.
+            down_up_count, exit_code \
+                = _execute(["git", "rev-list", "--count", "--left-right", "@{upstream}...HEAD"], True, path)
+            down_count = down_up_count.split("\t", 1)[0]
+            if int(down_count) > 0:
+                updatable_repos.append(path)
+
+        ArchUserRepo._iterate_git_dirs(ArchUserRepo._aur_base_dir, lambda p: _remember_if_has_updates(p))
+        return updatable_repos
+
+    @staticmethod
+    def get_updatable_packages() -> List[str]:
+        return list(map(lambda p: p.name, ArchUserRepo._get_updatable_git_repos()))
+
+    @staticmethod
+    def upgrade_packages() -> None:
+        updatable_git_repos = ArchUserRepo._get_updatable_git_repos()
+        for repo_path in updatable_git_repos:
+            _execute(["git", "pull"], False, repo_path)
+            _execute(["makepkg", "-sri"], False, repo_path)
 
 
 class Pacman(UpdatablePackageManager):
@@ -270,7 +349,7 @@ class Snap(UpdatablePackageManager):
 
 
 _PACKAGE_MANAGERS: List[Type[UpdatablePackageManager]] = [
-    Aptitude, Pacman, Python2, Python3, Snap
+    Aptitude, ArchUserRepo, Pacman, Python2, Python3, Snap
 ]
 
 
