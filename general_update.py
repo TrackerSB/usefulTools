@@ -229,7 +229,7 @@ class ArchUserRepo(UpdatablePackageManager):
         updatable_git_repos = ArchUserRepo._get_updatable_git_repos()
         for repo_path in updatable_git_repos:
             _execute(["git", "pull"], False, repo_path)
-            _execute(["makepkg", "-sri"], False, repo_path)
+            _execute(["makepkg", "-sri", "--noconfirm"], False, repo_path)
 
 
 class Pacman(UpdatablePackageManager):
