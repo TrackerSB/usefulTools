@@ -61,8 +61,8 @@ def _print_result(line: str) -> None:
 
 def _command_exists(command):
     """Check whether the given command exists and can be executed."""
-    from subprocess import getstatusoutput
-    return getstatusoutput("which " + command)[0] == 0
+    from shutil import which
+    return which(command) is not None
 
 
 def _execute(command: List[str], capture_stdout: bool, working_dir: Optional[Path] = None) \
