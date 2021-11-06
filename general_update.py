@@ -354,7 +354,7 @@ _PACKAGE_MANAGERS: List[Type[UpdatablePackageManager]] = [
 ]
 
 
-def _upgrade_packages():
+def _upgrade_packages(confirm_all: bool):
     for manager in _PACKAGE_MANAGERS:
         _print_result("Check '{}'".format(manager.get_pretty_name()))
         if manager.is_available():
@@ -364,7 +364,7 @@ def _upgrade_packages():
             if num_updatable_packages > 0:
                 _print_emph("Found {:d} updatable packages".format(num_updatable_packages), 2)
                 _print_emph(" ".join(updatable_packages), 2)
-                user_confirmed_upgrade = None
+                user_confirmed_upgrade = confirm_all
                 while user_confirmed_upgrade is None:
                     choice = input("Would you like to update? [y/N]").lower()
                     if choice == "y":
@@ -421,6 +421,10 @@ def _main():
                         help="When -c is specified allow execution of sudo commands. You may not want that if you only "
                              "want to know how many packages can be updated without having sudo permissions. But you "
                              "may want to specify this option if the number of updatable packages should be updated.")
+    parser.add_argument("-y", "--yes",
+                        # nargs="?",
+                        action="store_true",
+                        help="Do not prompt user for anything. Accept all changes.")
     args = parser.parse_args()
     global _enable_console_output
     _enable_console_output = not args.quiet
@@ -428,7 +432,7 @@ def _main():
         updatable_packages = _count_updatable_packages(args.allow_sudo)
         _print_result(" | ".join(map(lambda u: u[0] + ": " + str(u[1]), updatable_packages)))
     else:
-        _upgrade_packages()
+        _upgrade_packages(args.yes)
 
 
 if __name__ == "__main__":
