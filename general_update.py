@@ -364,7 +364,7 @@ def _upgrade_packages(confirm_all: bool):
             if num_updatable_packages > 0:
                 _print_emph("Found {:d} updatable packages".format(num_updatable_packages), 2)
                 _print_emph(" ".join(updatable_packages), 2)
-                user_confirmed_upgrade = confirm_all
+                user_confirmed_upgrade = True if confirm_all else None
                 while user_confirmed_upgrade is None:
                     choice = input("Would you like to update? [y/N]").lower()
                     if choice == "y":
