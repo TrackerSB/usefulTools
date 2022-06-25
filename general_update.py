@@ -213,9 +213,12 @@ class ArchUserRepo(UpdatablePackageManager):
             # FIXME Detect repos which have up to date history but whose package was not installed
             down_up_count, exit_code \
                 = _execute(["git", "rev-list", "--count", "--left-right", "@{upstream}...HEAD"], True, path)
-            down_count = down_up_count.split("\t", 1)[0]
-            if int(down_count) > 0:
-                updatable_repos.append(path)
+            if exit_code == 0:
+                down_count = down_up_count.split("\t", 1)[0]
+                if int(down_count) > 0:
+                    updatable_repos.append(path)
+            else:
+                _print_warn("Could not determine whether the repo is updatable")
 
         ArchUserRepo._iterate_git_dirs(ArchUserRepo._aur_base_dir, lambda p: _remember_if_has_updates(p))
         return updatable_repos
