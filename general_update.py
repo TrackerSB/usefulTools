@@ -118,7 +118,7 @@ class UpdatablePackageManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def upgrade_packages() -> None:
+    def upgrade_packages() -> bool:
         pass
 
 
@@ -146,11 +146,12 @@ class Aptitude(UpdatablePackageManager):
             return []
 
     @staticmethod
-    def upgrade_packages() -> None:
+    def upgrade_packages() -> bool:
         _execute(["sudo", "apt", "-y", "upgrade"], False)
         _execute(["sudo", "apt", "-y", "dist-upgrade"], False)
         _execute(["sudo", "apt", "-y", "autoremove"], False)
         _execute(["sudo", "apt", "-y", "autoclean"], False)
+        return True
 
 
 class ArchUserRepo(UpdatablePackageManager):
@@ -228,11 +229,13 @@ class ArchUserRepo(UpdatablePackageManager):
         return list(map(lambda p: p.name, ArchUserRepo._get_updatable_git_repos()))
 
     @staticmethod
-    def upgrade_packages() -> None:
+    def upgrade_packages() -> bool:
         updatable_git_repos = ArchUserRepo._get_updatable_git_repos()
         for repo_path in updatable_git_repos:
             _execute(["git", "pull"], False, repo_path)
             _execute(["makepkg", "-sri", "--noconfirm"], False, repo_path)
+
+        return True
 
 
 class Pacman(UpdatablePackageManager):
@@ -257,12 +260,18 @@ class Pacman(UpdatablePackageManager):
             return []
 
     @staticmethod
-    def upgrade_packages() -> None:
-        _execute(["sudo", "pacman", "-Su", "--noconfirm"], False)
-        _execute(["sudo", "pacman", "-Sc", "--noconfirm"], False)
+    def upgrade_packages() -> bool:
+        _, exit_code = _execute(["sudo", "pacman", "-Su", "--noconfirm"], False)
+        if exit_code != 0:
+            _print_error("Could not update packages")
+            return False
+        _, exit_code = _execute(["sudo", "pacman", "-Sc", "--noconfirm"], False)
+        if exit_code != 0:
+            _print_warn("Could not clean up installed packages")
+            return False
 
-
-#             ["sudo", "pacman", "-Rs", "$(pacman -Qqdt)", "--noconfirm"]  # 2020-11-03: Requires cracklib
+        return True
+        # ["sudo", "pacman", "-Rs", "$(pacman -Qqdt)", "--noconfirm"]  # 2020-11-03: Requires cracklib
 
 
 class Python2(UpdatablePackageManager):
@@ -289,8 +298,9 @@ class Python2(UpdatablePackageManager):
             return []
 
     @staticmethod
-    def upgrade_packages() -> None:
+    def upgrade_packages() -> bool:
         _print_warn("Upgrading packages is not implemented yet", 2)
+        return True
 
 
 class Python3(UpdatablePackageManager):
@@ -317,8 +327,9 @@ class Python3(UpdatablePackageManager):
             return []
 
     @staticmethod
-    def upgrade_packages() -> None:
+    def upgrade_packages() -> bool:
         _print_warn("Upgrading packages is not implemented yet", 2)
+        return True
 
 
 class Snap(UpdatablePackageManager):
@@ -348,8 +359,9 @@ class Snap(UpdatablePackageManager):
             return []
 
     @staticmethod
-    def upgrade_packages() -> None:
+    def upgrade_packages() -> bool:
         _execute(["sudo", "snap", "refresh"], False)
+        return True
 
 
 _PACKAGE_MANAGERS: List[Type[UpdatablePackageManager]] = [
@@ -357,7 +369,9 @@ _PACKAGE_MANAGERS: List[Type[UpdatablePackageManager]] = [
 ]
 
 
-def _upgrade_packages(confirm_all: bool):
+def _upgrade_packages(confirm_all: bool) -> bool:
+    allUpgradesSucceeded = True
+
     for manager in _PACKAGE_MANAGERS:
         _print_result("Check '{}'".format(manager.get_pretty_name()))
         if manager.is_available():
@@ -375,13 +389,15 @@ def _upgrade_packages(confirm_all: bool):
                     elif choice in ("n", ""):
                         user_confirmed_upgrade = False
                 if user_confirmed_upgrade:
-                    manager.upgrade_packages()  # FIXME Enable on user confirmation
+                    allUpgradesSucceeded = allUpgradesSucceeded and manager.upgrade_packages()  # FIXME Enable on user confirmation
                 else:
                     _print_info("Upgrade skipped", 2)
             else:
                 _print_emph("All packages are up to date", 2)
         else:
             _print_info("'{}' is not installed".format(manager.get_pretty_name()), 2)
+
+    return allUpgradesSucceeded
 
 
 def _count_updatable_packages(update_package_lists: bool) -> List[Tuple[str, int]]:
@@ -404,7 +420,7 @@ def _main():
 
     def signal_handler(_sig, _frame):
         _print_error("generalUpdate got aborted by the user")
-        exit(0)
+        exit(1)
 
     signal(SIGINT, signal_handler)
 
@@ -435,7 +451,7 @@ def _main():
         updatable_packages = _count_updatable_packages(args.allow_sudo)
         _print_result(" | ".join(map(lambda u: u[0] + ": " + str(u[1]), updatable_packages)))
     else:
-        _upgrade_packages(args.yes)
+        exit(0 if _upgrade_packages(args.yes) else 1)
 
 
 if __name__ == "__main__":
