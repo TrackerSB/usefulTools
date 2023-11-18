@@ -318,7 +318,8 @@ class Python3(UpdatablePackageManager):
 
     @staticmethod
     def get_updatable_packages() -> List[str]:
-        output, exit_code = _execute(["pip3", "list", "--outdated", "--not-required"], True)
+        # FIXME This function is not allowed to use "sudo"
+        output, exit_code = _execute(["sudo", "pip3", "list", "--outdated", "--not-required"], True)
         if exit_code == 0:
             package_list = list(map(lambda line: line.partition(' ')[0], output.splitlines()))
             del package_list[0:2]
