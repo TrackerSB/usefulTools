@@ -402,15 +402,20 @@ def _upgrade_packages(confirm_all: bool) -> bool:
 
 
 def _count_updatable_packages(update_package_lists: bool) -> List[Tuple[str, int]]:
+    any_package_manager_available = False
     updatable_packages_per_manager = []
     for manager in _PACKAGE_MANAGERS:
         if manager.is_available():
+            any_package_manager_available = True
             if update_package_lists:
                 manager.update_package_list()
             num_updatable_packages = len(manager.get_updatable_packages())
             if num_updatable_packages > 0:
                 updatable_packages_per_manager.append((manager.get_pretty_name(), num_updatable_packages))
-    if not updatable_packages_per_manager:
+    if any_package_manager_available:
+        if not updatable_packages_per_manager:
+            updatable_packages_per_manager.append(("All packages uptodate", 0))
+    else:
         updatable_packages_per_manager.append(("No supported package manager found", -1))
     return updatable_packages_per_manager
 
